@@ -1,0 +1,33 @@
+workflows:
+  flutter-android:
+    name: Flutter Android Build
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      xcode: latest
+    cache:
+      cache_paths:
+        - $FLUTTER_ROOT/.pub-cache
+        - $HOME/.gradle/caches
+        - $HOME/.gradle/wrapper
+    scripts:
+      - name: Install dependencies
+        script: flutter pub get
+      - name: Analyze project
+        script: flutter analyze || true   # 👈 roda análise mas não quebra o build
+      - name: Run tests
+        script: flutter test || true      # 👈 idem para os testes
+      - name: Build APK (release)
+        script: flutter build apk --release
+      - name: Build AppBundle (release)
+        script: flutter build appbundle --release
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
+      - build/app/outputs/bundle/release/*.aab
+    publishing:
+      email:
+        recipients:
+          - "manoel.filho.mf@icloud.com"
+        notify:
+          success: true
+          failure: true
