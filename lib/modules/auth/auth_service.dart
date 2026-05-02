@@ -24,7 +24,7 @@ class AuthService {
     try {
       final response = await _apiClient.dio.post(
         '/login',
-        data: {'username': username, 'password': password},
+        data: {'email': username, 'password': password},
       );
 
       final data = response.data;

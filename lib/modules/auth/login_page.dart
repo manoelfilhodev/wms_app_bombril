@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:wms_app/core/app_theme.dart';
 import 'package:wms_app/core/exceptions/auth_exception.dart';
 import 'package:wms_app/core/widgets/systex_glass_card.dart';
 import 'package:wms_app/core/widgets/systex_scaffold.dart';
 import 'package:wms_app/services/offline_auth_service.dart';
-import 'package:wms_app/utils/notifier.dart';
 import 'package:wms_app/utils/user_service.dart';
 
 class LoginPage extends StatefulWidget {
@@ -96,22 +94,6 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
-  Future<void> _showAuthErrorDialog(String message) async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Erro de autenticação'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
   int _toInt(dynamic value) {
     if (value is int) return value;
     if (value is String) return int.tryParse(value) ?? 0;
@@ -132,7 +114,7 @@ class _LoginPageState extends State<LoginPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: _feedbackColor?.withOpacity(0.14),
+                color: _feedbackColor?.withValues(alpha: 0.14),
                 border: Border.all(color: _feedbackColor ?? SystexColors.textSecondary),
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -212,23 +194,23 @@ class _LoginPageState extends State<LoginPage> {
                             controller: _userController,
                             focusNode: _userFocus,
                             autofocus: true,
-                            keyboardType: TextInputType.text,
+                            keyboardType: TextInputType.emailAddress,
                             style: const TextStyle(fontSize: 20, letterSpacing: 1.1),
                             decoration: const InputDecoration(
-                              labelText: 'Login',
-                              hintText: 'Digite seu login',
+                              labelText: 'E-mail',
+                              hintText: 'Digite seu e-mail',
                               border: OutlineInputBorder(),
                             ),
                             textInputAction: TextInputAction.next,
                             onFieldSubmitted: (_) => _passFocus.requestFocus(),
                             validator: (v) =>
-                                v == null || v.isEmpty ? 'Digite seu login' : null,
+                                v == null || v.isEmpty ? 'Digite seu e-mail' : null,
                           ),
                           const SizedBox(height: 16),
                           TextFormField(
                             controller: _passController,
                             focusNode: _passFocus,
-                            keyboardType: TextInputType.number,
+                            keyboardType: TextInputType.visiblePassword,
                             obscureText: _obscurePass,
                             style: const TextStyle(fontSize: 20, letterSpacing: 1.1),
                             decoration: InputDecoration(
@@ -247,9 +229,6 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                             textInputAction: TextInputAction.go,
                             onFieldSubmitted: (_) => _login(),
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
                             validator: (v) =>
                                 v == null || v.isEmpty ? 'Digite sua senha' : null,
                           ),

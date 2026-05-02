@@ -1,17 +1,10 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/widgets/systex_glass_card.dart';
 import '../../core/widgets/systex_scaffold.dart';
-import '../../ui/pages/funcionario_offline_page.dart';
-import '../armazenagem/armazenagem_page.dart';
 import '../auth/login_page.dart' show LoginPage;
-import '../expedicao/expedicao_page.dart';
-import '../inventario/inventario_page.dart';
-import '../kits/apontamento_kits_page.dart';
-import '../recebimento/pages/recebimento_page.dart';
-import '../separacao/separacao_page.dart';
+import '../kits/apontamento_paletes.dart';
 
 class DashboardPage extends StatelessWidget {
   final String userName;
@@ -35,48 +28,11 @@ class DashboardPage extends StatelessWidget {
 
     final modules = [
       {
-        'title': 'Recebimento',
-        'subtitle': 'Entrada e conferencia de mercadorias',
-        'page': const RecebimentoPage(),
-        'icon': Icons.inventory_2_outlined,
+        'title': 'Apontar palete com Stretch',
+        'subtitle': 'Leitura e apontamento de palete stretchado',
+        'page': const ApontamentoPaletesPage(),
+        'icon': Icons.qr_code_scanner_outlined,
       },
-      {
-        'title': 'Armazenagem',
-        'subtitle': 'Movimentacao e localizacao de produtos',
-        'page': const ArmazenagemPage(),
-        'icon': Icons.move_down_outlined,
-      },
-      {
-        'title': 'Separacao',
-        'subtitle': 'Picking e preparacao de pedidos',
-        'page': const SeparacaoPage(),
-        'icon': Icons.playlist_add_check_circle_outlined,
-      },
-      {
-        'title': 'Expedicao',
-        'subtitle': 'Saida e transporte de mercadorias',
-        'page': const ExpedicaoPage(),
-        'icon': Icons.local_shipping_outlined,
-      },
-      {
-        'title': 'Inventario',
-        'subtitle': 'Controle e contagem de estoque',
-        'page': const InventarioPage(),
-        'icon': Icons.analytics_outlined,
-      },
-      {
-        'title': 'Kits',
-        'subtitle': 'Apontamento e montagem de kits',
-        'page': const ApontamentoKitsPage(),
-        'icon': Icons.inventory_outlined,
-      },
-      if (!kIsWeb)
-        {
-          'title': 'Funcionario Offline',
-          'subtitle': 'Cadastro local com sync automatico',
-          'page': const FuncionarioOfflinePage(),
-          'icon': Icons.badge_outlined,
-        },
     ];
 
     return SystexScaffold(

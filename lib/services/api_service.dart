@@ -45,7 +45,7 @@ class ApiService {
   }) async {
     final response = await _dio.post(
       '/login',
-      data: {'username': username, 'password': password},
+      data: {'email': username, 'password': password},
     );
     return _asMap(response.data);
   }
@@ -72,6 +72,25 @@ class ApiService {
     } on DioException catch (e) {
       if (e.response?.data != null) {
         return _asMap(e.response!.data);
+      }
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> apontarPaleteStretch(
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      final response = await _dio.post(
+        '/v1/apontamentos-paletes-stretch',
+        data: payload,
+        options: Options(contentType: Headers.jsonContentType),
+      );
+      return _asMap(response.data);
+    } on DioException catch (e) {
+      if (e.response?.data != null) {
+        return _asMap(e.response!.data)
+          ..['status_code'] = e.response?.statusCode;
       }
       rethrow;
     }

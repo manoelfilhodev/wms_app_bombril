@@ -5,6 +5,7 @@ import 'core/app_bootstrap.dart';
 import 'core/app_theme.dart';
 import 'modules/auth/login_page.dart';
 import 'modules/dashboard/dashboard_page.dart';
+import 'modules/kits/apontamento_paletes.dart';
 import 'modules/splash/splash_page.dart';
 import 'ui/pages/funcionario_offline_page.dart';
 import 'ui/widgets/sync_status_banner.dart';
@@ -51,6 +52,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginPage(),
         '/dashboard': (context) => const DashboardPage(),
+        '/apontar-palete-stretch': (context) => const ApontamentoPaletesPage(),
         '/funcionarios-offline': (context) => const FuncionarioOfflinePage(),
       },
     );
