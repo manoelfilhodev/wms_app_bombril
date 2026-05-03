@@ -42,10 +42,33 @@ class ApiService {
   Future<Map<String, dynamic>> login({
     required String username,
     required String password,
+    required String deviceId,
   }) async {
     final response = await _dio.post(
       '/login',
-      data: {'email': username, 'password': password},
+      data: {
+        'email': username,
+        'password': password,
+        'device_id': deviceId,
+      },
+    );
+    return _asMap(response.data);
+  }
+
+  Future<Map<String, dynamic>> loginMicrosoft({
+    required String accessToken,
+    required String idToken,
+    required String deviceId,
+    required String platform,
+  }) async {
+    final response = await _dio.post(
+      '/auth/microsoft',
+      data: {
+        'access_token': accessToken,
+        'id_token': idToken,
+        'device_id': deviceId,
+        'platform': platform,
+      },
     );
     return _asMap(response.data);
   }
@@ -55,12 +78,14 @@ class ApiService {
     return _extractList(response.data);
   }
 
-  Future<Map<String, dynamic>> createFuncionario(Map<String, dynamic> payload) async {
+  Future<Map<String, dynamic>> createFuncionario(
+      Map<String, dynamic> payload) async {
     final response = await _dio.post('/funcionarios', data: payload);
     return _asMap(response.data);
   }
 
-  Future<Map<String, dynamic>> createContagemLivre(Map<String, dynamic> payload) async {
+  Future<Map<String, dynamic>> createContagemLivre(
+      Map<String, dynamic> payload) async {
     final response = await _dio.post('/contagem-livre/store', data: payload);
     return _asMap(response.data);
   }
@@ -96,7 +121,8 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>?> buscarDescricaoContagemLivrePorEan(String ean) async {
+  Future<Map<String, dynamic>?> buscarDescricaoContagemLivrePorEan(
+      String ean) async {
     final response = await _dio.get(
       '/contagem-livre/buscarDescricaoApi',
       queryParameters: {'ean': ean},
@@ -127,7 +153,10 @@ class ApiService {
 
   static List<Map<String, dynamic>> _extractList(dynamic data) {
     if (data is List) {
-      return data.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      return data
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
     }
 
     final map = _asMap(data);

@@ -182,13 +182,12 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
             parent: animation,
             curve: Curves.easeOut,
           );
-          final slide =
-              Tween<Offset>(
-                begin: const Offset(0, 0.02),
-                end: Offset.zero,
-              ).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-              );
+          final slide = Tween<Offset>(
+            begin: const Offset(0, 0.02),
+            end: Offset.zero,
+          ).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          );
 
           return FadeTransition(
             opacity: fade,
@@ -255,10 +254,8 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                 )!;
                 final opacity = (1.0 - progress).clamp(0.0, 1.0) * 0.30;
 
-                return Positioned(
-                  top: top,
-                  left: 0,
-                  right: 0,
+                return Transform.translate(
+                  offset: Offset(0, top),
                   child: IgnorePointer(
                     child: Container(
                       height: 42,

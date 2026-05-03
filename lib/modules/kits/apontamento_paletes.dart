@@ -4,12 +4,12 @@ import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/widgets/systex_glass_card.dart';
 import '../../core/widgets/systex_scaffold.dart';
 import '../../services/api_service.dart';
+import '../../services/device_identity_service.dart';
 
 class ApontamentoPaletesPage extends StatefulWidget {
   const ApontamentoPaletesPage({super.key});
@@ -19,7 +19,6 @@ class ApontamentoPaletesPage extends StatefulWidget {
 }
 
 class _ApontamentoPaletesPageState extends State<ApontamentoPaletesPage> {
-  static const _deviceIdKey = 'stretch_device_id';
   static const _appVersion = String.fromEnvironment(
     'APP_VERSION',
     defaultValue: '1.0.0+1',
@@ -28,6 +27,7 @@ class _ApontamentoPaletesPageState extends State<ApontamentoPaletesPage> {
   final _paleteController = TextEditingController();
   final _paleteFocus = FocusNode();
   final _apiService = ApiService.instance;
+  final _deviceIdentityService = DeviceIdentityService.instance;
 
   bool _isApontando = false;
   String? _feedbackMessage;
@@ -126,13 +126,7 @@ class _ApontamentoPaletesPageState extends State<ApontamentoPaletesPage> {
   }
 
   Future<String> _getDeviceId() async {
-    final prefs = await SharedPreferences.getInstance();
-    final current = prefs.getString(_deviceIdKey);
-    if (current != null && current.isNotEmpty) return current;
-
-    final generated = 'APP-${_generateClientUuid()}';
-    await prefs.setString(_deviceIdKey, generated);
-    return generated;
+    return _deviceIdentityService.getOrCreateDeviceId();
   }
 
   String _generateClientUuid() {

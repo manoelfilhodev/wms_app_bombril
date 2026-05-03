@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../database/local_database_service.dart';
 import '../services/api_service.dart';
 import '../services/connectivity_service.dart';
+import '../services/device_identity_service.dart';
 import '../services/token_storage_service.dart';
 import '../sync/sync_service.dart';
 import '../sync/sync_state.dart';
@@ -14,6 +15,7 @@ class AppBootstrap {
     if (_initialized) return;
 
     await TokenStorageService.instance.migrateFromLegacyPrefs();
+    await DeviceIdentityService.instance.getOrCreateDeviceId();
     await ConnectivityService.instance.startMonitoring();
 
     if (kIsWeb) {

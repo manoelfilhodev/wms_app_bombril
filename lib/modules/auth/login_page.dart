@@ -1,88 +1,83 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:wms_app/core/app_theme.dart';
 import 'package:wms_app/core/exceptions/auth_exception.dart';
 import 'package:wms_app/core/widgets/systex_glass_card.dart';
 import 'package:wms_app/core/widgets/systex_scaffold.dart';
-import 'package:wms_app/services/offline_auth_service.dart';
+import 'package:wms_app/services/device_identity_service.dart';
+import 'package:wms_app/services/microsoft_auth_service.dart';
+import 'package:wms_app/services/microsoft_web_auth.dart';
 import 'package:wms_app/utils/user_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
+  static const String appVersion = 'v1.0.0';
 
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _userController = TextEditingController();
-  final _passController = TextEditingController();
-  final _userFocus = FocusNode();
-  final _passFocus = FocusNode();
-  final OfflineAuthService _authService = OfflineAuthService();
+  final MicrosoftAuthService _microsoftAuthService = MicrosoftAuthService();
+  final DeviceIdentityService _deviceIdentityService =
+      DeviceIdentityService.instance;
 
-  bool _loading = false;
-  bool _obscurePass = true;
+  bool _microsoftLoading = false;
   String? _feedbackMessage;
   Color? _feedbackColor;
+  late final Future<String> _deviceIdFuture;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _userFocus.requestFocus();
-    });
+    _deviceIdFuture = _deviceIdentityService.getOrCreateDeviceId();
+
+    if (hasMicrosoftWebRedirectResult()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loginMicrosoft());
+    }
   }
 
-  @override
-  void dispose() {
-    _userController.dispose();
-    _passController.dispose();
-    _userFocus.dispose();
-    _passFocus.dispose();
-    super.dispose();
-  }
-
-  Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _loginMicrosoft() async {
     setState(() {
-      _loading = true;
+      _microsoftLoading = true;
       _feedbackMessage = null;
     });
 
     try {
-      final result = await _authService.login(
-        username: _userController.text.trim(),
-        password: _passController.text.trim(),
-      );
-
+      final result = await _microsoftAuthService.login();
       final user = result.user;
 
       await UserService.saveUser(
         token: result.token,
         id: _toInt(user['id_user'] ?? user['id']),
-        nome: user['nome']?.toString() ?? '',
+        nome: user['nome']?.toString() ?? user['name']?.toString() ?? '',
         nivel: user['nivel']?.toString() ?? '',
         tipo: user['tipo']?.toString() ?? '',
         unidade: _toInt(user['unidade']),
+        permissions: result.permissions,
       );
 
       if (!mounted) return;
-      if (result.isOffline) {
-        _showFeedback('Login offline realizado', isSuccess: true);
-      } else {
-        _showFeedback('Bem-vindo, ${user['nome'] ?? ''}!', isSuccess: true);
-      }
+
+      _showFeedback(
+        'Bem-vindo, ${user['nome'] ?? user['name'] ?? ''}!',
+        isSuccess: true,
+      );
+
       Navigator.pushReplacementNamed(context, '/dashboard');
     } on AuthException catch (e) {
       if (!mounted) return;
       _showFeedback(e.message, isSuccess: false);
     } catch (e) {
       if (!mounted) return;
-      _showFeedback('Verifique sua conexão e tente novamente', isSuccess: false);
+      _showFeedback(
+        'Nao foi possivel concluir o login Microsoft: $e',
+        isSuccess: false,
+      );
     } finally {
       if (mounted) {
-        setState(() => _loading = false);
+        setState(() => _microsoftLoading = false);
       }
     }
   }
@@ -94,10 +89,179 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
+  Future<void> _copyDeviceId(String deviceId) async {
+    await Clipboard.setData(ClipboardData(text: deviceId));
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text('ID do dispositivo copiado')),
+      );
+  }
+
   int _toInt(dynamic value) {
     if (value is int) return value;
+    if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value) ?? 0;
     return 0;
+  }
+
+  Widget _buildDeviceIdSection() {
+    return FutureBuilder<String>(
+      future: _deviceIdFuture,
+      builder: (context, snapshot) {
+        final deviceId = snapshot.data;
+        final isReady = deviceId != null && deviceId.isNotEmpty;
+        final visibleDeviceId = deviceId ?? '';
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.verified_user_rounded,
+                    size: 17,
+                    color: Colors.greenAccent,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Dispositivo seguro',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: SystexColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Este identificador é usado apenas para validação de acesso. Copie somente se o administrador solicitar.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: SystexColors.textSecondary,
+                      fontSize: 11,
+                    ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: isReady
+                        ? SelectableText(
+                            visibleDeviceId,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: SystexColors.textPrimary,
+                                  fontFamily: 'monospace',
+                                  fontSize: 12,
+                                ),
+                          )
+                        : Text(
+                            'Gerando identificador...',
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: SystexColors.textSecondary,
+                                    ),
+                          ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    tooltip: 'Copiar ID do dispositivo',
+                    icon: const Icon(Icons.copy_rounded, size: 18),
+                    onPressed:
+                        isReady ? () => _copyDeviceId(visibleDeviceId) : null,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSecurityInfo(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.greenAccent.withValues(alpha: 0.08),
+            border: Border.all(
+              color: Colors.greenAccent.withValues(alpha: 0.35),
+            ),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.security_rounded,
+                size: 16,
+                color: Colors.greenAccent,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  'Ambiente protegido por Microsoft Azure AD',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.greenAccent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Conexao segura • Identidade centralizada • Zero senha local',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: SystexColors.textSecondary,
+                fontSize: 11,
+              ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Autenticacao empresarial com controle de dispositivo',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: SystexColors.textSecondary.withValues(alpha: 0.7),
+                fontSize: 10,
+              ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVersionInfo(BuildContext context) {
+    return Text(
+      'Versao do app ${LoginPage.appVersion} • © 2026 Plataforma Operacional',
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: SystexColors.textSecondary.withValues(alpha: 0.75),
+            fontSize: 10,
+          ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+    );
   }
 
   @override
@@ -115,13 +279,17 @@ class _LoginPageState extends State<LoginPage> {
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
                 color: _feedbackColor?.withValues(alpha: 0.14),
-                border: Border.all(color: _feedbackColor ?? SystexColors.textSecondary),
+                border: Border.all(
+                  color: _feedbackColor ?? SystexColors.textSecondary,
+                ),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
                 children: [
                   Icon(
-                    _feedbackColor == SystexColors.success ? Icons.check_circle : Icons.error_outline,
+                    _feedbackColor == SystexColors.success
+                        ? Icons.check_circle
+                        : Icons.error_outline,
                     color: _feedbackColor,
                   ),
                   const SizedBox(width: 12),
@@ -133,7 +301,7 @@ class _LoginPageState extends State<LoginPage> {
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
-                      maxLines: 1,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -149,132 +317,76 @@ class _LoginPageState extends State<LoginPage> {
                   width: 400,
                   child: SystexGlassCard(
                     padding: const EdgeInsets.all(24),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.warehouse_rounded,
-                            size: 56,
-                            color: SystexColors.brandRed,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Systex WMS',
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 24,
-                                ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Gestão de Armazéns Inteligente',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: SystexColors.textSecondary,
-                                  fontSize: 14,
-                                ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const Divider(height: 32),
-                          Text(
-                            'Digite suas credenciais',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 18,
-                                ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _userController,
-                            focusNode: _userFocus,
-                            autofocus: true,
-                            keyboardType: TextInputType.emailAddress,
-                            style: const TextStyle(fontSize: 20, letterSpacing: 1.1),
-                            decoration: const InputDecoration(
-                              labelText: 'E-mail',
-                              hintText: 'Digite seu e-mail',
-                              border: OutlineInputBorder(),
-                            ),
-                            textInputAction: TextInputAction.next,
-                            onFieldSubmitted: (_) => _passFocus.requestFocus(),
-                            validator: (v) =>
-                                v == null || v.isEmpty ? 'Digite seu e-mail' : null,
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _passController,
-                            focusNode: _passFocus,
-                            keyboardType: TextInputType.visiblePassword,
-                            obscureText: _obscurePass,
-                            style: const TextStyle(fontSize: 20, letterSpacing: 1.1),
-                            decoration: InputDecoration(
-                              labelText: 'Senha',
-                              hintText: 'Digite sua senha',
-                              border: const OutlineInputBorder(),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscurePass
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                ),
-                                onPressed: () =>
-                                    setState(() => _obscurePass = !_obscurePass),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.warehouse_rounded,
+                          size: 56,
+                          color: SystexColors.brandRed,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Portal Operacional',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 24,
                               ),
-                            ),
-                            textInputAction: TextInputAction.go,
-                            onFieldSubmitted: (_) => _login(),
-                            validator: (v) =>
-                                v == null || v.isEmpty ? 'Digite sua senha' : null,
-                          ),
-                          const SizedBox(height: 24),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 64,
-                            child: ElevatedButton(
-                              onPressed: _loading ? null : _login,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: SystexColors.brandRed,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              child: _loading
-                                  ? const CircularProgressIndicator(color: Colors.white)
-                                  : const Text(
-                                      'ENTRAR',
-                                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Gestao Inteligente de Operações',
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: SystexColors.textSecondary,
+                                    fontSize: 14,
+                                  ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const Divider(height: 32),
+                        Text(
+                          'Acesse com sua conta corporativa',
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 18,
+                                  ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: OutlinedButton.icon(
+                            onPressed:
+                                _microsoftLoading ? null : _loginMicrosoft,
+                            icon: _microsoftLoading
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
                                     ),
-                            ),
+                                  )
+                                : const Icon(Icons.window_rounded),
+                            label: const Text('Entrar com Microsoft'),
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Conexão segura • Fallback offline-first',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: SystexColors.textSecondary,
-                                  fontSize: 12,
-                                ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '© 2026 Systex Sistemas Inteligentes',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: SystexColors.textSecondary,
-                                  fontSize: 11,
-                                ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 24),
+                        _buildDeviceIdSection(),
+                        const SizedBox(height: 20),
+                        _buildSecurityInfo(context),
+                        const SizedBox(height: 12),
+                        _buildVersionInfo(context),
+                      ],
                     ),
                   ),
                 ),

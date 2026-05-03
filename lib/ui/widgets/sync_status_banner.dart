@@ -15,10 +15,10 @@ class SyncStatusBanner extends StatelessWidget {
         final compact = snapshot.status == SyncIndicatorStatus.online;
 
         return Align(
-          alignment: Alignment.topRight,
+          alignment: Alignment.bottomRight,
           child: SafeArea(
             child: Container(
-              margin: const EdgeInsets.only(top: 8, right: 10),
+              margin: const EdgeInsets.only(right: 12, bottom: 12),
               padding: EdgeInsets.symmetric(
                 horizontal: compact ? 10 : 12,
                 vertical: compact ? 6 : 8,

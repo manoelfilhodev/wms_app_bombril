@@ -5,6 +5,7 @@ import '../../core/widgets/systex_glass_card.dart';
 import '../../core/widgets/systex_scaffold.dart';
 import '../auth/login_page.dart' show LoginPage;
 import '../kits/apontamento_paletes.dart';
+import '../../services/microsoft_web_auth_web.dart';
 
 class DashboardPage extends StatelessWidget {
   final String userName;
@@ -61,12 +62,8 @@ class DashboardPage extends StatelessWidget {
                   Icons.logout_rounded,
                   color: theme.colorScheme.primary,
                 ),
-                onPressed: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginPage()),
-                    (route) => false,
-                  );
+                onPressed: () async {
+                  await logoutMicrosoftWeb();
                 },
               ),
             ],

@@ -20,11 +20,16 @@ class AuthService {
   Future<Map<String, dynamic>> login({
     required String username,
     required String password,
+    required String deviceId,
   }) async {
     try {
       final response = await _apiClient.dio.post(
         '/login',
-        data: {'email': username, 'password': password},
+        data: {
+          'email': username,
+          'password': password,
+          'device_id': deviceId,
+        },
       );
 
       final data = response.data;
